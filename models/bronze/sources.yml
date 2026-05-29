@@ -1,7 +1,0 @@
-sources:
-  - name: loading_data
-    database: workspace
-    schema: bronze  
-    tables:
-      - name: accounts_brz
-      - name: iterations_brz
