@@ -1,0 +1,5 @@
+packages:
+  - package: dbt-labs/dbt_utils
+    version: 1.3.0  # Sostituisci con la versione compatibile con la tua versione di dbt
+  - package: elementary-data/elementary
+    version: 0.18.2
