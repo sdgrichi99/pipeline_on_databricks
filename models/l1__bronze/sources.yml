@@ -1,0 +1,6 @@
+sources:
+  - name: loading_data
+    database: workspace
+    schema: staging
+    tables:
+      - name: accounts_brz
