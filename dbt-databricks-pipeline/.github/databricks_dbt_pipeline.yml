@@ -6,29 +6,142 @@ on:
       - test
       - main
 
+#github alloca una macchina virtuale temporanea per far girare i comandi
 jobs:
-  deploy-and-run-dbt:
+  dbt-slim-ci:
+    name: Run dbt Slim CI with Deferral
     runs-on: ubuntu-latest
 
+    #clonzione del codice dentro la macchina virtuale
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      - name: Setup Databricks CLI
-        uses: databricks/setup-cli@v0.2.0
+      #esegue il seguente step solo se il branch di destinazione è main. salva none del branch source in una variabile bash e printa a schermo
+      #il nome del branch. se branch source è diverso da dev printa un errore e fa fallire il processo
+      - name: Validate Source Branch Name for Main
+        if: github.base_ref == 'main'
+        run: |
+          SRC_BRANCH="${{ github.head_ref }}"
+          echo "Branch sorgente della PR: $SRC_BRANCH"
+          if [[ ! "$SRC_BRANCH" =~ ^dev/ ]]; then
+            echo "::error::Le Pull Request verso 'main' sono consentite solo da branch che iniziano con 'dev/'!"
+            exit 1
+          fi
 
-      - name: Trigger Databricks TEST dbt Job
-        if: github.base_ref == 'test'
+      #Setup dell'ambiente Python e scaricamento della versione
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      #Installazione delle dipendenze dbt e Databricks SDK
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install dbt-databricks databricks-sdk
+
+      #Configurazione dinamica delle variabili di ambiente in base al branch Target della PR
+      #salva variabili e le rende disponibili agli step successivi con '>>'
+      - name: Set Target Environment Variables
+        run: |
+          # Definiamo uno schema temporaneo basato sul numero di PR
+          PR_SCHEMA="tst_pr_${{ github.event.number }}"
+          echo "PR_TEMPORARY_SCHEMA=$PR_SCHEMA" >> $GITHUB_ENV
+
+          if [ "${{ github.base_ref }}" == "main" ]; then
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_PROD_HOST }}" >> $GITHUB_ENV
+            echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_PROD_TOKEN }}" >> $GITHUB_ENV
+            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_PROD_TOKEN }}" >> $GITHUB_ENV
+            echo "DB_SCHEMA_NAME_PRD=PRD" >> $GITHUB_ENV
+          else
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_TEST_HOST }}" >> $GITHUB_ENV
+            echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TEST_TOKEN }}" >> $GITHUB_ENV
+            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TEST_TOKEN }}" >> $GITHUB_ENV
+            echo "DB_SCHEMA_NAME_PRD=NOT_SET" >> $GITHUB_ENV
+          fi
+
+      #Download del file manifest.json dal Volume Databricks via script Python
+      - name: Download Target Manifest from Databricks Volume
+        env:
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
+        run: |
+          python get_last_manifest.py
+
+      #Esecuzione dei pacchetti dbt
+      #profile dir cerca il profile yml
+      - name: Install dbt Dependencies
+        env:
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
+          DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
+          DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+        run: |
+          dbt deps --profiles-dir .
+
+      # 8. Esecuzione dbt Slim CI con Deferral (solo modelli modificati)
+      - name: Run dbt full refresh
+        env:
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
+          DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
+          DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+          DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
+        run: |
+          dbt build \
+          --fail-fast \
+          --full-refresh \
+          --defer \
+          --state ./state \
+          --profiles-dir . \
+          --select state:modified+
+
+      - name: dbt Run (Incremental Check)
+        env:
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
+          DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+          DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
+        run: |
+          dbt build \
+          --fail-fast \
+          --defer \
+          --state ./state \
+          --profiles-dir . \
+          --select state:modified+
+
+  cleanup-pr-schema:
+    name: Drop Temporary PR Schema
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Databricks SDK
+        run: pip install databricks-sdk
+
+      - name: Drop Ephemeral Schema on Databricks
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_TEST_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TEST_TOKEN }}
+          PR_NUM: ${{ github.event.number }}
         run: |
-          databricks jobs run-now --job-id 111111111
+          python -c "
+          import os
+          from databricks.sdk import WorkspaceClient
 
-      - name: Trigger Databricks PROD dbt Job
-        if: github.base_ref == 'main' # <-- Nota: si usa base_ref per le PR
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_PROD_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_PROD_TOKEN }}
-        run: |
-          databricks jobs run-now --job-id 222222222
+          w = WorkspaceClient()
+          schema_name = f'workspace.tst_pr_{os.environ[\"PR_NUM\"]}'
+          print(f'Eliminazione dello schema temporaneo: {schema_name}')
+          try:
+              w.statement_execution.execute_statement(
+                  statement=f'DROP SCHEMA IF EXISTS {schema_name} CASCADE',
+                  warehouse_id='${{ secrets.DATABRICKS_SQL_WAREHOUSE_ID }}'
+              )
+              print('Schema eliminato con successo!')
+          except Exception as e:
+              print(f'Errore durante eliminazione: {str(e)}')
+          "
