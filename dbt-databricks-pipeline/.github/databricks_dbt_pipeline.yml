@@ -50,16 +50,13 @@ jobs:
           echo "PR_TEMPORARY_SCHEMA=$PR_SCHEMA" >> $GITHUB_ENV
 
           if [ "${{ github.base_ref }}" == "main" ]; then
-            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_PROD_HOST }}" >> $GITHUB_ENV
-            echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_PROD_TOKEN }}" >> $GITHUB_ENV
-            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_PROD_TOKEN }}" >> $GITHUB_ENV
-            echo "DB_SCHEMA_NAME_PRD=PRD" >> $GITHUB_ENV
-          else
-            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_TEST_HOST }}" >> $GITHUB_ENV
-            echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TEST_TOKEN }}" >> $GITHUB_ENV
-            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TEST_TOKEN }}" >> $GITHUB_ENV
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
+            echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
+            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
+            echo "DB_SCHEMA_NAME=dev" >> $GITHUB_ENV
             echo "DB_SCHEMA_NAME_PRD=NOT_SET" >> $GITHUB_ENV
           fi
+
 
       #Download del file manifest.json dal Volume Databricks via script Python
       - name: Download Target Manifest from Databricks Volume
@@ -87,13 +84,22 @@ jobs:
           DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
           DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
         run: |
-          dbt build \
-          --fail-fast \
-          --full-refresh \
-          --defer \
-          --state ./state \
-          --profiles-dir . \
-          --select state:modified+
+          if [ -f "./state/manifest.json" ]; then
+            echo "Manifest trovato"
+            dbt build \
+              --fail-fast \
+              --full-refresh \
+              --defer \
+              --state ./state \
+              --profiles-dir . \
+              --select state:modified+
+          else
+            echo "Nessun manifest"
+            dbt build \
+              --fail-fast \
+              --full-refresh \
+              --profiles-dir .
+          fi
 
       - name: dbt Run (Incremental Check)
         env:
@@ -102,12 +108,21 @@ jobs:
           DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
           DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
         run: |
-          dbt build \
-          --fail-fast \
-          --defer \
-          --state ./state \
-          --profiles-dir . \
-          --select state:modified+
+          if [ -f "./state/manifest.json" ]; then
+            echo "--- Check Incrementale sui soli modificati ---"
+            dbt build \
+              --fail-fast \
+              --defer \
+              --state ./state \
+              --profiles-dir . \
+              --select state:modified+,config.materialized:incremental
+          else
+            echo "--- Check Incrementale globale per primo avvio ---"
+            dbt build \
+              --fail-fast \
+              --profiles-dir . \
+              --select config.materialized:incremental
+          fi
 
   cleanup-pr-schema:
     name: Drop Temporary PR Schema
