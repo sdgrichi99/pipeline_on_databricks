@@ -32,5 +32,23 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   pipeline_on_databricks:
     # Config indicated by + and applies to all files under models/example/
-    example:
+    l1__bronze:
       +materialized: view
+      +schema: bronze
+    l2__silver_cm:
+      +materialized: table
+      +schema: silver_cm
+    l2__silver_calc:
+      +materialized: table
+      +schema: silver_calc
+    l3__data_package:
+      +materialized: view
+      +schema: data_package
+    
+
+  elementary:
+    +schema: elementary
+    +enabled: "{{ (target.name.lower() == 'prd' or env_var('ELEMENTARY', 'false').lower() == 'true') | as_bool }}"
+    
+data_tests:
+  +severity: warn
