@@ -10,6 +10,9 @@ jobs:
   dbt-cd-publish:
     name: Run dbt Compile & Update Manifest Artifact
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dbt-databricks-pipeline
 
     steps:
       # 1. Checkout del codice appena unito su main/test
@@ -69,4 +72,4 @@ jobs:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
         run: |
-          python upload_manifest.py
+          python macros/upload_manifest.py

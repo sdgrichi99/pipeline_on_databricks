@@ -17,6 +17,9 @@ jobs:
     name: Run dbt Slim CI with Deferral
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dbt-databricks-pipeline
 
     #clonzione del codice dentro la macchina virtuale
     steps:
@@ -93,7 +96,7 @@ jobs:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
         run: |
-          python get_last_manifest.py
+          python macros/get_last_manifest.py
 
       #Esecuzione dei pacchetti dbt
       #profile dir cerca il profile yml
