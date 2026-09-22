@@ -1,0 +1,72 @@
+name: Databricks dbt CD Pipeline (Publish Manifest)
+
+on:
+  push:
+    branches:
+      - main
+      - test
+
+jobs:
+  dbt-cd-publish:
+    name: Run dbt Compile & Update Manifest Artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout del codice appena unito su main/test
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      # 2. Setup Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. Installazione Dipendenze
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install dbt-databricks databricks-sdk
+
+      # 4. Configurazione Variabili d'Ambiente CD
+      - name: Set Target Environment Variables
+        run: |
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            echo "DBT_TARGET=prd" >> $GITHUB_ENV
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
+            echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
+            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
+          else
+            echo "DBT_TARGET=dev" >> $GITHUB_ENV
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
+            echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
+            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
+          fi
+
+      # 5. Download dbt Packages
+      - name: Install dbt Dependencies
+        env:
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
+          DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
+          DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+          DBT_TARGET: ${{ env.DBT_TARGET }}
+        run: |
+          dbt deps --profiles-dir .
+
+      # 6. Esecuzione 'dbt compile' (Genera target/manifest.json senza eseguire i modelli)
+      - name: Run dbt Compile
+        env:
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
+          DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
+          DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+          DBT_TARGET: ${{ env.DBT_TARGET }}
+        run: |
+          dbt compile --profiles-dir .
+
+      # 7. Upload del nuovo manifest.json su Databricks Volume
+      - name: Upload Manifest to Databricks Volume
+        env:
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
+        run: |
+          python upload_manifest.py
