@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: order_revenue_details__l1__bronze
+    description: order_revenue_details__l1__bronze
+    columns:
+      - name: azienda_id
+        description: azienda_id
+      - name: ordine_id
+        description: ordine_id
+      - name: data_ordine
+        description: data_ordine
+      - name: importo_totale
+        description: importo_totale
+      - name: valuta
+        description: valuta
+      - name: canale_vendita
+        description: canale_vendita
+      - name: file_loading_dtm
+        description: file_loading_dtm
+      - name: nome_file_origine
+        description: nome_file_origine
