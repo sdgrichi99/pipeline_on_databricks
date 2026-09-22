@@ -14,19 +14,29 @@ def download_manifest():
     print(f"Sorgente Volume Databricks: {volume_path}")
     os.makedirs(local_dir, exist_ok=True)
 
+    # Recupero credenziali con fallback su DBT_ACCESS_TOKEN
+    host = os.environ.get("DATABRICKS_HOST")
+    token = os.environ.get("DATABRICKS_TOKEN") or os.environ.get("DBT_ACCESS_TOKEN")
+
     try:
-        w = WorkspaceClient()
+        # Inizializziamo il client passando esplicitamente le credenziali se presenti
+        if host and token:
+            w = WorkspaceClient(host=host, token=token)
+        else:
+            w = WorkspaceClient()
+
         print("Download in corso...")
         response = w.files.download(volume_path)
         with open(local_file, "wb") as f:
             shutil.copyfileobj(response.contents, f)
         print(f"Manifest scaricato in: {local_file}")
 
+    # Se il manifest non viene trovato nel volume, continua per consentire la Full Build
     except NotFound:
         print("AVVISO: Nessun manifest trovato sul Volume Databricks (Primo avvio!).")
         print("La pipeline continuerà senza confronto dello stato (Full Build).")
-        # Non facciamo 'raise' per non far fallire lo step della CI!
-
+    
+    # Errore se abbiamo un problema di configurazione/autenticazione
     except Exception as e:
         print(f"Errore critico inaspettato durante il download: {str(e)}")
         raise e
