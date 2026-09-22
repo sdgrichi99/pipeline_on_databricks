@@ -48,11 +48,7 @@ models:
 
   elementary:
     +schema: elementary
-    +enabled: |
-      {%- if target.name.lower() == 'prd' -%} {{ true | as_bool }}
-      {%-elif env_var('ELEMENTARY', 'false').lower() == 'true' -%} {{ true | as_bool }}
-      {%- else -%} {{ false | as_bool }}
-      {%- endif -%}
+    +enabled: "{{ (target.name.lower() == 'prd' or env_var('ELEMENTARY', 'false').lower() == 'true') | as_bool }}"
     
 data_tests:
   +severity: warn
