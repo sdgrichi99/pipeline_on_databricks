@@ -50,8 +50,8 @@ jobs:
         run: |
           SRC_BRANCH="${{ github.head_ref }}"
           echo "Branch sorgente della PR: $SRC_BRANCH"
-          if [[ ! "$SRC_BRANCH" =~ ^dev/ ]]; then
-            echo "::error::Le Pull Request verso 'main' sono consentite solo da branch che iniziano con 'dev/'!"
+          if [[ "$SRC_BRANCH" != "dev" && ! "$SRC_BRANCH" =~ ^dev/ ]]; then
+            echo "::error::Le Pull Request verso 'main' sono consentite solo da 'dev' o rami 'dev/'!"
             exit 1
           fi
 
@@ -124,14 +124,14 @@ jobs:
               --defer \
               --state ./state \
               --profiles-dir . \
-              --select +state:modified+,config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto.
+              --select +state:modified+,config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto."
           else
             echo "--- Step 1: Full Refresh globale dei soli incrementali (Primo Avvio)"
             dbt build \
               --fail-fast \
               --full-refresh \
               --profiles-dir . \
-              --select config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto.
+              --select config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto."
           fi
 
       # STEP 2: Build standard (Senza Full-Refresh) sui modificati + incrementali correlati
