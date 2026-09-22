@@ -1,6 +1,17 @@
 sources:
   - name: loading_data
-    database: workspace
-    schema: staging
+    database: workspace_prd
+    schema: landing
     tables:
-      - name: accounts_brz
+      - name: factory_details_root_summaries
+        description: "root table"
+      - name: factory_details_cliente
+        description: "client details"
+      - name: factory_details_dettagli_ordine
+        description: "total product revenue per order"
+      - name: factory_details_ordini
+        description: "total revenue per order"
+      - name: factory_details_pagamenti
+        description: "method of payment"
+      - name: factory_details_prodotto
+        description: "product details"
