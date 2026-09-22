@@ -5,17 +5,43 @@ on:
     branches:
       - test
       - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
 
 #github alloca una macchina virtuale temporanea per far girare i comandi
 jobs:
   dbt-slim-ci:
     name: Run dbt Slim CI with Deferral
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
 
     #clonzione del codice dentro la macchina virtuale
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Controllo se il branch sorgente è aggiornato rispetto al target (es. main)
+      - name: Check if Branch is Up-to-Date with Target
+        run: |
+          TARGET_BRANCH="${{ github.base_ref }}"
+          echo "Verifica disallineamento rispetto a: $TARGET_BRANCH"
+          
+          git fetch origin $TARGET_BRANCH
+
+          # Conta quanti commit presenti sul target (origin/main) mancano sul branch corrente (HEAD)
+          BEHIND_COUNT=$(git rev-list --count HEAD..origin/$TARGET_BRANCH)
+
+          if [ "$BEHIND_COUNT" -gt 0 ]; then
+            echo "::error::Il tuo branch è indietro di $BEHIND_COUNT commit rispetto a '$TARGET_BRANCH'. Fai un merge o un rebase da '$TARGET_BRANCH' prima di eseguire la Pull Request!"
+            exit 1
+          else
+            echo "Il branch sorgente è al pari o più avanti rispetto a '$TARGET_BRANCH'."
+          fi
 
       #esegue il seguente step solo se il branch di destinazione è main. salva none del branch source in una variabile bash e printa a schermo
       #il nome del branch. se branch source è diverso da dev printa un errore e fa fallire il processo
@@ -45,16 +71,19 @@ jobs:
       #salva variabili e le rende disponibili agli step successivi con '>>'
       - name: Set Target Environment Variables
         run: |
-          # Definiamo uno schema temporaneo basato sul numero di PR
           PR_SCHEMA="tst_pr_${{ github.event.number }}"
           echo "PR_TEMPORARY_SCHEMA=$PR_SCHEMA" >> $GITHUB_ENV
 
+          # Impostiamo esplicitamente il target per dbt
           if [ "${{ github.base_ref }}" == "main" ]; then
+            echo "DBT_TARGET=prd" >> $GITHUB_ENV
             echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
             echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
             echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
-            echo "DB_SCHEMA_NAME=dev" >> $GITHUB_ENV
-            echo "DB_SCHEMA_NAME_PRD=NOT_SET" >> $GITHUB_ENV
+          else
+            echo "DBT_TARGET=dev" >> $GITHUB_ENV
+            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
+            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
           fi
 
 
@@ -73,55 +102,60 @@ jobs:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
           DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
           DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+          DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
           dbt deps --profiles-dir .
 
       # 8. Esecuzione dbt Slim CI con Deferral (solo modelli modificati)
-      - name: Run dbt full refresh
+      # STEP 1: Full Refresh solo sui modelli incrementali correlati
+      - name: Step 1 - dbt Full Refresh (Incremental models & lineage only)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
           DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
           DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
           DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
+          DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
           if [ -f "./state/manifest.json" ]; then
-            echo "Manifest trovato"
+            echo "--- Step 1: Full Refresh solo sui modelli INCREMENTALI correlati (PR) ---"
             dbt build \
               --fail-fast \
               --full-refresh \
               --defer \
               --state ./state \
               --profiles-dir . \
-              --select state:modified+
+              --select +state:modified+,config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto.
           else
-            echo "Nessun manifest"
+            echo "--- Step 1: Full Refresh globale dei soli incrementali (Primo Avvio)"
             dbt build \
               --fail-fast \
               --full-refresh \
-              --profiles-dir .
+              --profiles-dir . \
+              --select config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto.
           fi
 
-      - name: dbt Run (Incremental Check)
+      # STEP 2: Build standard (Senza Full-Refresh) sui modificati + incrementali correlati
+      - name: Step 2 - dbt Build (Modified models + Incremental lineage check)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
+          DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
           DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
           DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
+          DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
           if [ -f "./state/manifest.json" ]; then
-            echo "--- Check Incrementale sui soli modificati ---"
+            echo "--- Step 2: Build normale sui modificati e i loro parent/children incrementali"
             dbt build \
               --fail-fast \
               --defer \
               --state ./state \
               --profiles-dir . \
-              --select state:modified+,config.materialized:incremental
+              --select state:modified+,+state:modified+,config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto.
           else
-            echo "--- Check Incrementale globale per primo avvio ---"
+            echo "--- Step 2: Build normale globale (Primo Avvio)"
             dbt build \
               --fail-fast \
-              --profiles-dir . \
-              --select config.materialized:incremental
+              --profiles-dir .
           fi
 
   cleanup-pr-schema:
@@ -140,21 +174,29 @@ jobs:
 
       - name: Drop Ephemeral Schema on Databricks
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_TEST_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TEST_TOKEN }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_WAREHOUSE_ID: ${{ secrets.DBT_HTTP_PATH }} # oppure il secret del WAREHOUSE_ID
           PR_NUM: ${{ github.event.number }}
         run: |
           python -c "
           import os
           from databricks.sdk import WorkspaceClient
 
-          w = WorkspaceClient()
+          w = WorkspaceClient(
+              host=os.environ['DATABRICKS_HOST'],
+              token=os.environ['DATABRICKS_TOKEN']
+          )
           schema_name = f'workspace.tst_pr_{os.environ[\"PR_NUM\"]}'
+          
+          # Estraiamo l'ID del warehouse dal path se necessario
+          warehouse_id = os.environ['DATABRICKS_WAREHOUSE_ID'].split('/')[-1]
+
           print(f'Eliminazione dello schema temporaneo: {schema_name}')
           try:
               w.statement_execution.execute_statement(
                   statement=f'DROP SCHEMA IF EXISTS {schema_name} CASCADE',
-                  warehouse_id='${{ secrets.DATABRICKS_SQL_WAREHOUSE_ID }}'
+                  warehouse_id=warehouse_id
               )
               print('Schema eliminato con successo!')
           except Exception as e:
