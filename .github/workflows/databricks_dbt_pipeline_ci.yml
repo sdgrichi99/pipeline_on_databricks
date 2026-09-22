@@ -11,29 +11,26 @@ on:
       - reopened
       - closed
 
-#github alloca una macchina virtuale temporanea per far girare i comandi
 jobs:
   dbt-slim-ci:
     name: Run dbt Slim CI with Deferral
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
 
-    #clonzione del codice dentro la macchina virtuale
     steps:
+      # 1. Checkout del codice
       - name: Checkout repository code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Controllo se il branch sorgente è aggiornato rispetto al target (es. main)
+      # 2. Controllo allineamento branch
       - name: Check if Branch is Up-to-Date with Target
         run: |
           TARGET_BRANCH="${{ github.base_ref }}"
           echo "Verifica disallineamento rispetto a: $TARGET_BRANCH"
           
           git fetch origin $TARGET_BRANCH
-
-          # Conta quanti commit presenti sul target (origin/main) mancano sul branch corrente (HEAD)
           BEHIND_COUNT=$(git rev-list --count HEAD..origin/$TARGET_BRANCH)
 
           if [ "$BEHIND_COUNT" -gt 0 ]; then
@@ -43,8 +40,7 @@ jobs:
             echo "Il branch sorgente è al pari o più avanti rispetto a '$TARGET_BRANCH'."
           fi
 
-      #esegue il seguente step solo se il branch di destinazione è main. salva none del branch source in una variabile bash e printa a schermo
-      #il nome del branch. se branch source è diverso da dev printa un errore e fa fallire il processo
+      # 3. Validazione nome ramo sorgente per main
       - name: Validate Source Branch Name for Main
         if: github.base_ref == 'main'
         run: |
@@ -55,39 +51,34 @@ jobs:
             exit 1
           fi
 
-      #Setup dell'ambiente Python e scaricamento della versione
+      # 4. Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      #Installazione delle dipendenze dbt e Databricks SDK
+      # 5. Installazione dipendenze
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
-          pip install dbt-databricks databricks-sdk
+          pip install dbt-databricks databricks-sdk requests
 
-      #Configurazione dinamica delle variabili di ambiente in base al branch Target della PR
-      #salva variabili e le rende disponibili agli step successivi con '>>'
+      # 6. Impostazione Variabili d'Ambiente (CORRETTO)
       - name: Set Target Environment Variables
         run: |
           PR_SCHEMA="tst_pr_${{ github.event.number }}"
           echo "PR_TEMPORARY_SCHEMA=$PR_SCHEMA" >> $GITHUB_ENV
+          echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
+          echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
+          echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
 
-          # Impostiamo esplicitamente il target per dbt
           if [ "${{ github.base_ref }}" == "main" ]; then
             echo "DBT_TARGET=prd" >> $GITHUB_ENV
-            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
-            echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
-            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
           else
             echo "DBT_TARGET=dev" >> $GITHUB_ENV
-            echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
-            echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
           fi
 
-
-      #Download del file manifest.json dal Volume Databricks via script Python
+      # 7. Download Manifest da Databricks Volume
       - name: Download Target Manifest from Databricks Volume
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
@@ -95,8 +86,7 @@ jobs:
         run: |
           python macros/get_last_manifest.py
 
-      #Esecuzione dei pacchetti dbt
-      #profile dir cerca il profile yml
+      # 8. Download Dipendenze dbt
       - name: Install dbt Dependencies
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
@@ -105,9 +95,8 @@ jobs:
           DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
           dbt deps --profiles-dir .
-##test
-      # 8. Esecuzione dbt Slim CI con Deferral (solo modelli modificati)
-      # STEP 1: Full Refresh solo sui modelli incrementali correlati
+
+      # 9. Step 1 - dbt Full Refresh su modelli incrementali
       - name: Step 1 - dbt Full Refresh (Incremental models & lineage only)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
@@ -116,13 +105,13 @@ jobs:
           DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
           DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
-          if [ -f "./state/manifest.json" ]; then
+          if [ -f "./target/manifest.json" ]; then
             echo "--- Step 1: Full Refresh solo sui modelli INCREMENTALI correlati (PR) ---"
             dbt build \
               --fail-fast \
               --full-refresh \
               --defer \
-              --state ./state \
+              --state ./target \
               --profiles-dir . \
               --select +state:modified+,config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto."
           else
@@ -134,7 +123,7 @@ jobs:
               --select config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto."
           fi
 
-      # STEP 2: Build standard (Senza Full-Refresh) sui modificati + incrementali correlati
+      # 10. Step 2 - dbt Build
       - name: Step 2 - dbt Build (Modified models + Incremental lineage check)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
@@ -143,14 +132,14 @@ jobs:
           DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
           DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
-          if [ -f "./state/manifest.json" ]; then
+          if [ -f "./target/manifest.json" ]; then
             echo "--- Step 2: Build normale sui modificati e i loro parent/children incrementali"
             dbt build \
               --fail-fast \
               --defer \
-              --state ./state \
+              --state ./target \
               --profiles-dir . \
-              --select state:modified+,+state:modified+,config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto.
+              --select state:modified+,+state:modified+,config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto."
           else
             echo "--- Step 2: Build normale globale (Primo Avvio)"
             dbt build \
@@ -176,7 +165,7 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-          DATABRICKS_WAREHOUSE_ID: ${{ secrets.DBT_HTTP_PATH }} # oppure il secret del WAREHOUSE_ID
+          DATABRICKS_WAREHOUSE_ID: ${{ secrets.DBT_HTTP_PATH }}
           PR_NUM: ${{ github.event.number }}
         run: |
           python -c "
@@ -189,7 +178,6 @@ jobs:
           )
           schema_name = f'workspace.tst_pr_{os.environ[\"PR_NUM\"]}'
           
-          # Estraiamo l'ID del warehouse dal path se necessario
           warehouse_id = os.environ['DATABRICKS_WAREHOUSE_ID'].split('/')[-1]
 
           print(f'Eliminazione dello schema temporaneo: {schema_name}')
