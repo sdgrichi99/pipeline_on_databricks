@@ -105,7 +105,7 @@ jobs:
           DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
           dbt deps --profiles-dir .
-
+##test
       # 8. Esecuzione dbt Slim CI con Deferral (solo modelli modificati)
       # STEP 1: Full Refresh solo sui modelli incrementali correlati
       - name: Step 1 - dbt Full Refresh (Incremental models & lineage only)
