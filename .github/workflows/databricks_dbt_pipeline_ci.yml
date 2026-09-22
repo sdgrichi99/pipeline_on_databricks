@@ -17,9 +17,6 @@ jobs:
     name: Run dbt Slim CI with Deferral
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dbt-databricks-pipeline
 
     #clonzione del codice dentro la macchina virtuale
     steps:
