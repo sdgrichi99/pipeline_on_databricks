@@ -5,3 +5,4 @@ logs/
 
 .databricks
 .env
+generate_yml.py
