@@ -99,7 +99,7 @@ jobs:
           DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
           PR_NUM: ${{ github.event.number }}
         run: |
-          python macros/manage_pr_catalog.py --action create
+          python macros/temp_catalog.py --action create
 
       # 7. Download Manifest da Databricks Volume
       - name: Download Target Manifest from Databricks Volume
@@ -185,4 +185,4 @@ jobs:
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
           PR_NUM: ${{ github.event.number }}
         run: |
-          python macros/manage_pr_catalog.py --action drop
+          python macros/temp_catalog.py --action drop
