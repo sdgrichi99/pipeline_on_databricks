@@ -72,7 +72,6 @@ jobs:
           echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
           echo "DATABRICKS_HTTP_PATH=${{ secrets.DBT_HTTP_PATH }}" >> $GITHUB_ENV
           echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
-          # Nella CI il target è sempre DEV per evitare sovrascritture in PRD
           echo "DBT_TARGET=dev" >> $GITHUB_ENV
 
       - name: Generate profiles.yml
@@ -87,11 +86,20 @@ jobs:
                 http_path: "${{ env.DATABRICKS_HTTP_PATH }}"
                 auth_type: token
                 token: "${{ env.DATABRICKS_TOKEN }}"
-                # Impostiamo il CATALOGO (Database) temporaneo isolato
                 catalog: "${{ env.PR_TEMPORARY_SCHEMA }}"
                 schema: "main"
                 threads: 4
           EOF
+
+      # 6.5 Creazione Fisica del Catalogo Temporaneo su Databricks
+      - name: Create PR Temporary Catalog
+        env:
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
+          DATABRICKS_HTTP_PATH: ${{ env.DATABRICKS_HTTP_PATH }}
+          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
+          PR_NUM: ${{ github.event.number }}
+        run: |
+          python macros/manage_pr_catalog.py --action create
 
       # 7. Download Manifest da Databricks Volume
       - name: Download Target Manifest from Databricks Volume
@@ -121,7 +129,7 @@ jobs:
               --defer \
               --state ./target_remote \
               --profiles-dir . \
-              --select +state:modified+,config.materialized:incremental || echo "Nessun modello incrementale modificato."
+              --select state:modified,config.materialized:incremental || echo "Nessun modello incrementale modificato."
           else
             echo "--- Step 1: Full Refresh globale degli incrementali (Primo Avvio) ---"
             dbt build \
@@ -159,6 +167,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -167,32 +178,11 @@ jobs:
       - name: Install Databricks SDK
         run: pip install databricks-sdk
 
-      - name: Drop Ephemeral Catalog on Databricks
+      - name: Drop Ephemeral Catalog
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-          DATABRICKS_WAREHOUSE_ID: ${{ secrets.DBT_HTTP_PATH }}
           PR_NUM: ${{ github.event.number }}
         run: |
-          python -c "
-          import os
-          from databricks.sdk import WorkspaceClient
-
-          w = WorkspaceClient(
-              host=os.environ['DATABRICKS_HOST'],
-              token=os.environ['DATABRICKS_TOKEN']
-          )
-          catalog_name = f'tst_pr_{os.environ[\"PR_NUM\"]}'
-          
-          warehouse_id = os.environ['DATABRICKS_WAREHOUSE_ID'].split('/')[-1]
-
-          print(f'Eliminazione del catalogo temporaneo: {catalog_name}')
-          try:
-              w.statement_execution.execute_statement(
-                  statement=f'DROP CATALOG IF EXISTS {catalog_name} CASCADE',
-                  warehouse_id=warehouse_id
-              )
-              print('Catalogo temporaneo eliminato con successo!')
-          except Exception as e:
-              print(f'Errore durante eliminazione: {str(e)}')
-          "
+          python macros/manage_pr_catalog.py --action drop
