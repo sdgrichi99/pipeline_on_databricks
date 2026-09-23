@@ -151,15 +151,15 @@ jobs:
           DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
           if [ -f "./target_remote/manifest.json" ]; then
-            echo "--- Step 2: Build normale sui modificati e i loro parent/children incrementali"
+            echo "--- Step 2: Build di tutti i modelli modificati e della linea incrementale ---"
             dbt build \
               --fail-fast \
               --defer \
               --state ./target_remote \
               --profiles-dir . \
-              --select state:modified+,+state:modified+,config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto."
+              --select state:modified+ +config.materialized:incremental || echo "Nessun modello da eseguire."
           else
-            echo "--- Step 2: Build normale globale (Primo Avvio)"
+            echo "--- Step 2: Build globale (Primo Avvio) ---"
             dbt build \
               --fail-fast \
               --profiles-dir .
