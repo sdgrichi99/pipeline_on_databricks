@@ -6,3 +6,5 @@ logs/
 .databricks
 .env
 generate_yml.py
+profiles.yml
+target_remote
