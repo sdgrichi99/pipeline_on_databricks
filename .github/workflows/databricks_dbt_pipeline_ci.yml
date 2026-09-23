@@ -63,14 +63,15 @@ jobs:
           pip install --upgrade pip
           pip install dbt-databricks databricks-sdk requests
 
-      # 6. Impostazione Variabili d'Ambiente (CORRETTO)
+      # 6. Impostazione Variabili d'Ambiente
       - name: Set Target Environment Variables
         run: |
           PR_SCHEMA="tst_pr_${{ github.event.number }}"
           echo "PR_TEMPORARY_SCHEMA=$PR_SCHEMA" >> $GITHUB_ENV
+          echo "DBT_PR_SCHEMA=$PR_SCHEMA" >> $GITHUB_ENV
           echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
+          echo "DATABRICKS_HTTP_PATH=${{ secrets.DBT_HTTP_PATH }}" >> $GITHUB_ENV
           echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
-          echo "DBT_ACCESS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
 
           if [ "${{ github.base_ref }}" == "main" ]; then
             echo "DBT_TARGET=prd" >> $GITHUB_ENV
@@ -90,8 +91,8 @@ jobs:
       - name: Install dbt Dependencies
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
-          DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
-          DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+          DATABRICKS_HTTP_PATH: ${{ env.DATABRICKS_HTTP_PATH }}
+          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
           DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
           dbt deps --profiles-dir .
@@ -100,8 +101,8 @@ jobs:
       - name: Step 1 - dbt Full Refresh (Incremental models & lineage only)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
-          DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
-          DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+          DATABRICKS_HTTP_PATH: ${{ env.DATABRICKS_HTTP_PATH }}
+          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
           DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
           DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
@@ -127,8 +128,8 @@ jobs:
       - name: Step 2 - dbt Build (Modified models + Incremental lineage check)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
-          DBT_ACCESS_TOKEN: ${{ env.DBT_ACCESS_TOKEN }}
-          DBT_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+          DATABRICKS_HTTP_PATH: ${{ env.DATABRICKS_HTTP_PATH }}
+          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
           DBT_PR_SCHEMA: ${{ env.PR_TEMPORARY_SCHEMA }}
           DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
