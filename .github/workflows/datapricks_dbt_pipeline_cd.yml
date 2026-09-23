@@ -40,7 +40,23 @@ jobs:
           else
             echo "DBT_TARGET=dev" >> $GITHUB_ENV
           fi
-
+      - name: Generate profiles.yml
+        run: |
+          cat <<EOF > profiles.yml
+          pipeline_on_databricks:
+            target: "${{ env.DBT_TARGET }}"
+            outputs:
+            
+              prd:
+                type: databricks
+                host: "${{ env.DATABRICKS_HOST }}"
+                http_path: "${{ env.DATABRICKS_HTTP_PATH }}"
+                auth_type: token
+                token: "${{ env.DATABRICKS_TOKEN }}"
+                catalog: workspace_prd
+                schema: main
+                threads: 4
+          EOF
       # 5. Download dbt Packages
       - name: Install dbt Dependencies
         env:
