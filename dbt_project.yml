@@ -33,17 +33,17 @@ models:
   pipeline_on_databricks:
     # Config indicated by + and applies to all files under models/example/
     l1__bronze:
-      +materialized: view
-      +schema: bronze
+      +materialized: table
+      +schema: l1__bronze
     l2__silver_cm:
       +materialized: table
-      +schema: silver_cm
+      +schema: l2__silver_cm
     l2__silver_calc:
       +materialized: table
-      +schema: silver_calc
+      +schema: l2__silver_calc
     l3__data_package:
       +materialized: view
-      +schema: data_package
+      +schema: l3__data_package
     
 
   elementary:
