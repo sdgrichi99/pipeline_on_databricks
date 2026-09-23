@@ -1,18 +1,17 @@
-name: Databricks dbt CD Pipeline (Publish Manifest)
+name: Databricks dbt CD Pipeline (Build & Publish Manifest)
 
 on:
   push:
     branches:
       - main
-      - test
 
 jobs:
-  dbt-cd-publish:
-    name: Run dbt Compile & Update Manifest Artifact
+  dbt-cd-deploy:
+    name: Run dbt Build & Update Manifest Artifact
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout del codice appena unito su main/test
+      # 1. Checkout del codice appena unito su main
       - name: Checkout repository code
         uses: actions/checkout@v4
 
@@ -28,25 +27,21 @@ jobs:
           pip install --upgrade pip
           pip install dbt-databricks databricks-sdk
 
-      # 4. Configurazione Variabili d'Ambiente CD (CORRETTO)
+      # 4. Configurazione Variabili d'Ambiente Produzione
       - name: Set Target Environment Variables
         run: |
           echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
           echo "DATABRICKS_HTTP_PATH=${{ secrets.DBT_HTTP_PATH }}" >> $GITHUB_ENV
           echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
+          echo "DBT_TARGET=prd" >> $GITHUB_ENV
 
-          if [ "${{ github.ref_name }}" == "main" ]; then
-            echo "DBT_TARGET=prd" >> $GITHUB_ENV
-          else
-            echo "DBT_TARGET=dev" >> $GITHUB_ENV
-          fi
+      # 5. Generazione profiles.yml per Produzione
       - name: Generate profiles.yml
         run: |
           cat <<EOF > profiles.yml
           pipeline_on_databricks:
             target: "${{ env.DBT_TARGET }}"
             outputs:
-            
               prd:
                 type: databricks
                 host: "${{ env.DATABRICKS_HOST }}"
@@ -57,30 +52,18 @@ jobs:
                 schema: main
                 threads: 4
           EOF
-      # 5. Download dbt Packages
+
+      # 6. Installazione pacchetti dbt
       - name: Install dbt Dependencies
-        env:
-          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
-          DATABRICKS_HTTP_PATH: ${{ env.DATABRICKS_HTTP_PATH }}
-          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
-          DBT_TARGET: ${{ env.DBT_TARGET }}
         run: |
           dbt deps --profiles-dir .
 
-      # 6. Esecuzione 'dbt compile' (Genera target/manifest.json)
-      - name: Run dbt Compile
-        env:
-          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
-          DATABRICKS_HTTP_PATH: ${{ env.DATABRICKS_HTTP_PATH }}
-          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
-          DBT_TARGET: ${{ env.DBT_TARGET }}
+      # 7. Esecuzione 'dbt build' in Produzione (Crea/Aggiorna Tabelle e Viste)
+      - name: Run dbt Build on Production
         run: |
-          dbt compile --profiles-dir .
+          dbt build --profiles-dir .
 
-      # 7. Upload del nuovo manifest.json su Databricks Volume
+      # 8. Upload del nuovo manifest.json su Databricks Volume
       - name: Upload Manifest to Databricks Volume
-        env:
-          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
         run: |
           python macros/upload_manifest.py
