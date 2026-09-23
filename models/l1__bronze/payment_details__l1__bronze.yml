@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: payment_details__l1__bronze
+    description: payment_details__l1__bronze
+    columns:
+      - name: azienda_id
+        description: azienda_id
+      - name: ordine_id
+        description: ordine_id
+      - name: transazione_id
+        description: transazione_id
+      - name: metodo_pagamento
+        description: metodo_pagamento
+      - name: stato_pagamento
+        description: stato_pagamento
+      - name: circuito
+        description: circuito
+      - name: importo_pagato
+        description: importo_pagato
+      - name: nome_file_origine
+        description: nome_file_origine
+      - name: file_loading_dtm
+        description: file_loading_dtm

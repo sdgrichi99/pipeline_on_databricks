@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: product_details__l1__bronze
+    description: product_details__l1__bronze
+    columns:
+      - name: azienda_id
+        description: azienda_id
+      - name: settore_id
+        description: settore_id
+      - name: nome_settore
+        description: nome_settore
+      - name: responsabile_settore
+        description: responsabile_settore
+      - name: prodotto_id
+        description: prodotto_id
+      - name: categoria_prodotto
+        description: categoria_prodotto
+      - name: nome_prodotto
+        description: nome_prodotto
+      - name: ordine_id
+        description: ordine_id
+      - name: riga_id
+        description: riga_id
+      - name: nome_file_origine
+        description: nome_file_origine
+      - name: file_loading_dtm
+        description: file_loading_dtm

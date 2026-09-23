@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: client_details__l1__bronze
+    description: client_details__l1__bronze
+    columns:
+      - name: azienda_id
+        description: azienda_id
+      - name: ordine_id
+        description: ordine_id
+      - name: cliente_id
+        description: cliente_id
+      - name: nome_cliente
+        description: nome_cliente
+      - name: cognome_cliente
+        description: cognome_cliente
+      - name: email_cliente
+        description: email_cliente
+      - name: indirizzo_paese
+        description: indirizzo_paese
+      - name: indirizzo_citta
+        description: indirizzo_citta
+      - name: tipologia_cliente
+        description: tipologia_cliente
+      - name: nome_file_origine
+        description: nome_file_origine
+      - name: file_loading_dtm
+        description: file_loading_dtm
