@@ -6,10 +6,16 @@ models:
     columns:
       - name: azienda_id
         description: azienda_id
+        data_tests:
+          - not null
       - name: ordine_id
         description: ordine_id
+        data_tests:
+          - not null
       - name: transazione_id
         description: transazione_id
+        data_tests:
+          - not null
       - name: metodo_pagamento
         description: metodo_pagamento
       - name: stato_pagamento

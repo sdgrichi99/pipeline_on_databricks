@@ -12,7 +12,7 @@ def upload_manifest():
     print(f"Destinazione Volume Databricks: {volume_path}")
 
     if not os.path.exists(local_file):
-        raise FileNotFoundError(f"Errore: Il file {local_file} non esiste. Esegui prima 'dbt compile'.")
+        raise FileNotFoundError(f"Errore: Il file {local_file} non esiste. Esegui prima 'dbt compile/dbt build...'.")
 
     host = os.environ.get("DATABRICKS_HOST", "").strip().rstrip("/")
     token = (os.environ.get("DATABRICKS_TOKEN") or os.environ.get("DBT_ACCESS_TOKEN") or "").strip()
@@ -32,7 +32,7 @@ def upload_manifest():
         with open(local_file, "rb") as f:
             w.files.upload(volume_path, f, overwrite=True)
             
-        print("Manifest aggiornato e caricato con successo sul Volume Databricks!")
+        print("Manifest aggiornato e caricato con successo sul Volume Databricks")
 
     except Exception as e:
         print(f"Errore critico durante l'upload del manifest: {str(e)}")

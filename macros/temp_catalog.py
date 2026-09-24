@@ -36,10 +36,10 @@ def main():
 
     if args.action == "create":
         query = f"CREATE CATALOG IF NOT EXISTS {catalog_name}"
-        print(f"Sto creando il catalogo temporaneo: {catalog_name}...")
+        print(f"creazione temp catalog: {catalog_name}...")
     elif args.action == "drop":
         query = f"DROP CATALOG IF EXISTS {catalog_name} CASCADE"
-        print(f"Sto eliminando il catalogo temporaneo: {catalog_name}...")
+        print(f"eliminazione temp catalog: {catalog_name}...")
 
     try:
         response = w.statement_execution.execute_statement(

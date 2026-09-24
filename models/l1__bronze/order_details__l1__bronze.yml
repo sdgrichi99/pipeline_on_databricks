@@ -6,10 +6,16 @@ models:
     columns:
       - name: azienda_id
         description: azienda_id
+        data_tests:
+          - not null
       - name: ordine_id
         description: ordine_id
+        data_tests:
+          - not null
       - name: riga_id
         description: riga_id
+        data_tests:
+          - not null
       - name: prezzo_unitario
         description: prezzo_unitario
       - name: quantita
