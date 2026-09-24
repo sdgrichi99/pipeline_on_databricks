@@ -46,15 +46,15 @@ jobs:
       #    git fetch origin main
       #    SRC_BRANCH="${{ github.head_ref }}"
       #    TARGET_BRANCH="${{ github.base_ref }}"
+
       #    git fetch origin $TARGET_BRANCH
-#
       #    echo "Branch Sorgente: $SRC_BRANCH"
       #    echo "Branch Destinazione: $TARGET_BRANCH"
-#
+
       #    ERRORS=0
-#
-      #    # Controlla se il branch sorgente è indietro rispetto a main
-      #    SRC_BEHIND=$(git rev-list --count HEAD..origin/main)
+
+      #    Controlla se il branch sorgente è indietro rispetto a main
+      #    SRC_BEHIND=$(git rev-list --count HEAD..origin/$TARGET_BRANCH)
       #    if [ "$SRC_BEHIND" -gt 0 ]; then
       #      echo "::error::Il branch sorgente '$SRC_BRANCH' è indietro di $SRC_BEHIND commit rispetto a 'main'."
       #      ERRORS=$((ERRORS + 1))
@@ -62,8 +62,9 @@ jobs:
       #      echo "SUCCESS: Il branch sorgente '$SRC_BRANCH' è allineato con 'main'."
       #    fi
 #
-      #    # Controlla se il branch dindestinazione è indietro rispetto a main
+      #    Controlla se il branch dindestinazione è indietro rispetto a main
       #    if [ "$TARGET_BRANCH" != "main" ]; then
+      #      git fetch origin main
       #      TARGET_BEHIND=$(git rev-list --count origin/$TARGET_BRANCH..origin/main)
       #      if [ "$TARGET_BEHIND" -gt 0 ]; then
       #        echo "::error::Il branch di destinazione '$TARGET_BRANCH' è indietro di $TARGET_BEHIND commit rispetto a 'main'."
@@ -74,13 +75,13 @@ jobs:
       #    else
       #      echo "INFO: La destinazione è 'main', controllo del target ignorato."
       #    fi
-#
+
       #    # Blocco se almeno uno dei due è disallineato
       #    if [ "$ERRORS" -gt 0 ]; then
-      #      echo "Risolvere i disallineamenti."
+      #      echo "Effettuare git pull origin main sul branch indietro rispetto a main"
       #      exit 1
       #    fi
-#
+
       # 3. Validazione nome ramo sorgente per main
       - name: Validate Source Branch Name for Main
         if: github.base_ref == 'main'
