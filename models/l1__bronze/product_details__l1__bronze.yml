@@ -6,14 +6,20 @@ models:
     columns:
       - name: azienda_id
         description: azienda_id
+        data_tests:
+          - not_null
       - name: settore_id
         description: settore_id
+        data_tests:
+          - not_null
       - name: nome_settore
         description: nome_settore
       - name: responsabile_settore
         description: responsabile_settore
       - name: prodotto_id
         description: prodotto_id
+        data_tests:
+          - not_null
       - name: categoria_prodotto
         description: categoria_prodotto
       - name: nome_prodotto

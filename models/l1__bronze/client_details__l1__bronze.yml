@@ -6,10 +6,16 @@ models:
     columns:
       - name: azienda_id
         description: azienda_id
+        data_tests:
+          - not_null
       - name: ordine_id
         description: ordine_id
+        data_tests:
+          - not_null
       - name: cliente_id
         description: cliente_id
+        data_tests:
+          - not_null
       - name: nome_cliente
         description: nome_cliente
       - name: cognome_cliente

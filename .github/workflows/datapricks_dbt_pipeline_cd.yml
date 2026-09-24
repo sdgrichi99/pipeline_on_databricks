@@ -1,9 +1,11 @@
-name: Databricks dbt CD Pipeline (Build & Publish Manifest)
+name: Databricks dbt CD Pipeline
 
 on:
   push:
     branches:
       - main
+      - release
+      - release/*
 
 jobs:
   dbt-cd-deploy:

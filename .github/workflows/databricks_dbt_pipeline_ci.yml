@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - test
+      - release/*
       - main
     types:
       - opened
@@ -39,6 +40,47 @@ jobs:
           else
             echo "Il branch sorgente è al pari o più avanti rispetto a '$TARGET_BRANCH'."
           fi
+      
+      # controllo branch status rispetto a main usando branch release come deploy intermedio
+      #  run: |
+      #    git fetch origin main
+      #    SRC_BRANCH="${{ github.head_ref }}"
+      #    TARGET_BRANCH="${{ github.base_ref }}"
+
+      #    git fetch origin $TARGET_BRANCH
+      #    echo "Branch Sorgente: $SRC_BRANCH"
+      #    echo "Branch Destinazione: $TARGET_BRANCH"
+
+      #    ERRORS=0
+
+      #    Controlla se il branch sorgente è indietro rispetto a main
+      #    SRC_BEHIND=$(git rev-list --count HEAD..origin/$TARGET_BRANCH)
+      #    if [ "$SRC_BEHIND" -gt 0 ]; then
+      #      echo "::error::Il branch sorgente '$SRC_BRANCH' è indietro di $SRC_BEHIND commit rispetto a 'main'."
+      #      ERRORS=$((ERRORS + 1))
+      #    else
+      #      echo "SUCCESS: Il branch sorgente '$SRC_BRANCH' è allineato con 'main'."
+      #    fi
+#
+      #    Controlla se il branch dindestinazione è indietro rispetto a main
+      #    if [ "$TARGET_BRANCH" != "main" ]; then
+      #      git fetch origin main
+      #      TARGET_BEHIND=$(git rev-list --count origin/$TARGET_BRANCH..origin/main)
+      #      if [ "$TARGET_BEHIND" -gt 0 ]; then
+      #        echo "::error::Il branch di destinazione '$TARGET_BRANCH' è indietro di $TARGET_BEHIND commit rispetto a 'main'."
+      #        ERRORS=$((ERRORS + 1))
+      #      else
+      #        echo "SUCCESS: Il branch di destinazione '$TARGET_BRANCH' è allineato con 'main'."
+      #      fi
+      #    else
+      #      echo "La destinazione è 'main' e il controllo è già effettuato"
+      #    fi
+
+      #    # Blocco se almeno uno dei due è disallineato
+      #    if [ "$ERRORS" -gt 0 ]; then
+      #      echo "Allineare il branch source con target là dove è necessario"
+      #      exit 1
+      #    fi
 
       # 3. Validazione nome ramo sorgente per main
       - name: Validate Source Branch Name for Main
@@ -50,6 +92,26 @@ jobs:
             echo "::error::Le Pull Request verso 'main' sono consentite solo da 'dev' o rami 'dev/'!"
             exit 1
           fi
+        
+      #  run: |
+      #    SRC_BRANCH="${{ github.head_ref}}"
+      #    TARGET_BRANCH="${{ github.base_ref}}"
+      #    if [[ "$TARGET_BRANCH" == 'main' ]]; then
+      #      if [[ "$SRC_BRANCH" != 'release' && ! "$SRC_BRANCH" =~ ^release/ ]]; then
+      #        echo "::error::Le Le pr verso main devono essere aperta solo da release branch"
+      #        exit 1
+      #      else
+      #        echo "il branch di partenza è corretto"
+      #      fi
+      #    fi
+      #    if [[ "$TARGET_BRANCH" == 'release' || "$TARGET_BRANCH" =~ ^release/ ]]; then
+      #      if [[ "$SRC_BRANCH" != 'dev' && ! "$SRC_BRANCH" =~ ^dev/ ]]; then
+      #        echo "::error::Le Le pr verso release devono essere aperta solo da rami dev o dev/"
+      #        exit 1
+      #      else
+      #        echo "il branch di partenza è corretto"
+      #      fi
+      #    fi
 
       # 4. Setup Python
       - name: Set up Python
