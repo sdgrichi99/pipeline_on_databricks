@@ -7,15 +7,15 @@ models:
       - name: azienda_id
         description: azienda_id
         data_tests:
-          - not null
+          - not_null
       - name: ordine_id
         description: ordine_id
         data_tests:
-          - not null
+          - not_null
       - name: riga_id
         description: riga_id
         data_tests:
-          - not null
+          - not_null
       - name: prezzo_unitario
         description: prezzo_unitario
       - name: quantita

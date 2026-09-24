@@ -7,7 +7,7 @@ models:
       - name: azienda_id
         description: azienda_id
         data_tests:
-          - not null
+          - not_null
       - name: nome_azienda
         description: nome_azienda
       - name: estrazione_timestamp

@@ -7,11 +7,11 @@ models:
       - name: azienda_id
         description: azienda_id
         data_tests:
-          - not null
+          - not_null
       - name: ordine_id
         description: ordine_id
         data_tests:
-          - not null
+          - not_null
       - name: data_ordine
         description: data_ordine
       - name: importo_totale
