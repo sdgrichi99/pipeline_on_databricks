@@ -73,12 +73,12 @@ jobs:
       #        echo "SUCCESS: Il branch di destinazione '$TARGET_BRANCH' è allineato con 'main'."
       #      fi
       #    else
-      #      echo "INFO: La destinazione è 'main', controllo del target ignorato."
+      #      echo "La destinazione è 'main' e il controllo è già effettuato"
       #    fi
 
       #    # Blocco se almeno uno dei due è disallineato
       #    if [ "$ERRORS" -gt 0 ]; then
-      #      echo "Effettuare git pull origin main sul branch indietro rispetto a main"
+      #      echo "Allineare il branch source con target là dove è necessario"
       #      exit 1
       #    fi
 
