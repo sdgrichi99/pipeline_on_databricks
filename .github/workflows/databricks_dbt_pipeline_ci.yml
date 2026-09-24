@@ -184,7 +184,7 @@ jobs:
           DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
         run: |
           if [ -f "./target_remote/manifest.json" ]; then
-            echo "--- Step 1: Full Refresh solo sui modelli INCREMENTALI modificati ---"
+            echo "Step 1: Full Refresh solo sui modelli INCREMENTALI modificati"
             dbt build \
               --fail-fast \
               --full-refresh \
@@ -193,7 +193,7 @@ jobs:
               --profiles-dir . \
               --select state:modified,config.materialized:incremental || echo "Nessun modello incrementale modificato."
           else
-            echo "--- Step 1: Full Refresh globale degli incrementali (Primo Avvio) ---"
+            echo "Full Refresh globale degli incrementali se manifest non viene trovato"
             dbt build \
               --fail-fast \
               --full-refresh \
@@ -202,14 +202,14 @@ jobs:
           fi
 
       # 10. Step 2 - dbt Build dei modificati + lineage incrementale
-      - name: Step 2 - dbt Build (Modified models & Incremental lineage)
+      - name: Step2 - dbt Build (Modified models & Incremental lineage)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
           DATABRICKS_HTTP_PATH: ${{ env.DATABRICKS_HTTP_PATH }}
           DATABRICKS_TOKEN: ${{ env.DATABRICKS_TOKEN }}
         run: |
           if [ -f "./target_remote/manifest.json" ]; then
-            echo "--- Step 2: Build di tutti i modelli modificati e della linea incrementale ---"
+            echo "Step 2: Build di tutti i modelli modificati e della linea incrementale"
             dbt build \
               --fail-fast \
               --defer \
@@ -217,7 +217,7 @@ jobs:
               --profiles-dir . \
               --select state:modified+ +config.materialized:incremental || echo "Nessun modello da eseguire."
           else
-            echo "--- Step 2: Build globale (Primo Avvio) ---"
+            echo "se manifest non viene trovto"
             dbt build \
               --fail-fast \
               --profiles-dir .
