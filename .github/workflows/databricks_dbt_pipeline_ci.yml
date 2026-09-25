@@ -53,10 +53,11 @@ jobs:
       - name: Check if Branch is Up-to-Date with Target
         run: |
           TARGET_BRANCH="${{ github.base_ref }}"
+          LAST_COMMIT="${{ github.event.pull_request.head.sha }}"
           echo "Verifica disallineamento rispetto a: $TARGET_BRANCH"
           
           git fetch origin $TARGET_BRANCH
-          BEHIND_COUNT=$(git rev-list --count HEAD..origin/$TARGET_BRANCH)
+          BEHIND_COUNT=$(git rev-list --count $LAST_COMMIT..origin/$TARGET_BRANCH)
 
           if [ "$BEHIND_COUNT" -gt 0 ]; then
             echo "::error::Il tuo branch è indietro di $BEHIND_COUNT commit rispetto a '$TARGET_BRANCH'. Fai un merge o un rebase da '$TARGET_BRANCH' prima di eseguire la Pull Request!"
@@ -70,6 +71,7 @@ jobs:
       #    git fetch origin main
       #    SRC_BRANCH="${{ github.head_ref }}"
       #    TARGET_BRANCH="${{ github.base_ref }}"
+      #    LAST_COMMIT="${{ github.event.pull_request.head.sha }}"
 
       #    git fetch origin $TARGET_BRANCH
       #    echo "Branch Sorgente: $SRC_BRANCH"
@@ -78,7 +80,7 @@ jobs:
       #    ERRORS=0
 
       #    Controlla se il branch sorgente è indietro rispetto a main
-      #    SRC_BEHIND=$(git rev-list --count HEAD..origin/$TARGET_BRANCH)
+      #    SRC_BEHIND=$(git rev-list --count $LAST_COMMIT..origin/$TARGET_BRANCH)
       #    if [ "$SRC_BEHIND" -gt 0 ]; then
       #      echo "::error::Il branch sorgente '$SRC_BRANCH' è indietro di $SRC_BEHIND commit rispetto a 'main'."
       #      ERRORS=$((ERRORS + 1))
