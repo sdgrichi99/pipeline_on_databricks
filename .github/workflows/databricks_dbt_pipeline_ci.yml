@@ -24,6 +24,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      
+      # 1.5. Controllo presenza file YML per ogni modello SQL
+      - name: Check SQL models have corresponding YML files
+        run: |
+          echo "Verifica presenza dei file yml per ciascun modello sql"
+          MISSING_YML=0
+
+          while read -r sql_file; do
+            # Rimuove l'estensione .sql per ottenere il percorso base del modello
+            base_path="${sql_file%.sql}"
+            
+            # Controlla se esiste il rispettivo file .yml o .yaml
+            if [ ! -f "${base_path}.yml" ]; then
+              echo "::error file=${sql_file}::Il file '${sql_file}' non ha un file YML di documentazione corrispondente (${base_path}.yml o ${base_path}.yaml)!"
+              MISSING_YML=1
+            fi
+          done < <(find models -type f -name "*.sql")
+
+          # Se almeno un file YML manca, interrompe la pipeline
+          if [ $MISSING_YML -gt 0 ]; then
+            echo "::error::manca file yml."
+            exit 1
+          fi
+          echo "success: Tutti i file SQL hanno il rispettivo file YML."
 
       # 2. Controllo allineamento branch
       - name: Check if Branch is Up-to-Date with Target
@@ -59,7 +83,7 @@ jobs:
       #      echo "::error::Il branch sorgente '$SRC_BRANCH' è indietro di $SRC_BEHIND commit rispetto a 'main'."
       #      ERRORS=$((ERRORS + 1))
       #    else
-      #      echo "SUCCESS: Il branch sorgente '$SRC_BRANCH' è allineato con 'main'."
+      #      echo "success: Il branch sorgente '$SRC_BRANCH' è allineato con 'main'."
       #    fi
 #
       #    Controlla se il branch dindestinazione è indietro rispetto a main
@@ -70,7 +94,7 @@ jobs:
       #        echo "::error::Il branch di destinazione '$TARGET_BRANCH' è indietro di $TARGET_BEHIND commit rispetto a 'main'."
       #        ERRORS=$((ERRORS + 1))
       #      else
-      #        echo "SUCCESS: Il branch di destinazione '$TARGET_BRANCH' è allineato con 'main'."
+      #        echo "success: Il branch di destinazione '$TARGET_BRANCH' è allineato con 'main'."
       #      fi
       #    else
       #      echo "La destinazione è 'main' e il controllo è già effettuato"
