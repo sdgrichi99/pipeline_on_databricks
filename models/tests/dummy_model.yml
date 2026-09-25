@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: dummy_model
+    description: dummy_model
+    data_tests:
+      - primary_key_check:
+          primary_key_list: ['product_id']
+      - source_data_validation:
+          source_model: "ref('leaning_dummy_model')"
+          id_fields: ['product_id']
+    columns:
+      - name: product_id
+        description: product_id
+        data_tests:
+          - not_null
+      - name: product_name
