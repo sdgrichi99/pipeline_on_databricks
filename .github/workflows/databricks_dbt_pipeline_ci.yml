@@ -215,14 +215,14 @@ jobs:
               --defer \
               --state ./target_remote \
               --profiles-dir . \
-              --select state:modified,config.materialized:incremental || echo "Nessun modello incrementale modificato."
+              --select +state:modified,config.materialized:incremental --exclude leaning_dummy_model+ || echo "Nessun modello incrementale modificato."
           else
             echo "Full Refresh globale degli incrementali se manifest non viene trovato"
             dbt build \
               --fail-fast \
               --full-refresh \
               --profiles-dir . \
-              --select config.materialized:incremental || echo "Nessun modello incrementale presente nel progetto."
+              --select config.materialized:incremental --exclude leaning_dummy_model+ || echo "Nessun modello incrementale presente nel progetto."
           fi
 
       # 10. Step 2 - dbt Build dei modificati + lineage incrementale
@@ -239,12 +239,13 @@ jobs:
               --defer \
               --state ./target_remote \
               --profiles-dir . \
-              --select state:modified+ +config.materialized:incremental || echo "Nessun modello da eseguire."
+              --select state:modified+ +state:modified,config.materialized:incremental --exclude leaning_dummy_model+ || echo "Nessun modello da eseguire."
           else
             echo "se manifest non viene trovto"
             dbt build \
               --fail-fast \
-              --profiles-dir .
+              --profiles-dir . \
+              --exclude leaning_dummy_model+
           fi
 
   cleanup-pr-schema:
