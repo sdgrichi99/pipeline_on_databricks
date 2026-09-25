@@ -1,0 +1,6 @@
+models:
+  - name: leaning_dummy_model
+    description: leaning_dummy_model
+    columns:
+      - name: product_id
+      - name: product_name
