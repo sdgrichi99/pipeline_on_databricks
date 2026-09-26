@@ -13,23 +13,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout del codice appena unito su main
+      # Checkout del codice appena unito su main
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      # 2. Setup Python
+      # Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 3. Installazione Dipendenze
+      # Installazione Dipendenze
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
           pip install dbt-databricks databricks-sdk
 
-      # 4. Configurazione Variabili d'Ambiente Produzione
+      # Configurazione Variabili d'Ambiente Prod
       - name: Set Target Environment Variables
         run: |
           echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
@@ -37,7 +37,7 @@ jobs:
           echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
           echo "DBT_TARGET=prd" >> $GITHUB_ENV
 
-      # 5. Generazione profiles.yml per Produzione
+      # Generazione profiles.yml per Prod
       - name: Generate profiles.yml
         run: |
           cat <<EOF > profiles.yml
@@ -55,17 +55,17 @@ jobs:
                 threads: 4
           EOF
 
-      # 6. Installazione pacchetti dbt
+      # Installazione pacchetti dbt
       - name: Install dbt Dependencies
         run: |
           dbt deps --profiles-dir .
 
-      # 7. Esecuzione 'dbt build' in Produzione (Crea/Aggiorna Tabelle e Viste)
+      # Esecuzione 'dbt build' in Produzione
       - name: Run dbt Build on Production
         run: |
           dbt build --profiles-dir .
 
-      # 8. Upload del nuovo manifest.json su Databricks Volume
+      # Upload del nuovo manifest.json su Databricks Volume
       - name: Upload Manifest to Databricks Volume
         run: |
           python macros/upload_manifest.py

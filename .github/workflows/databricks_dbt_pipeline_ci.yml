@@ -19,13 +19,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout del codice
+      #Checkout del codice
       - name: Checkout repository code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
-      # 1.5. Controllo presenza file YML per ogni modello SQL
+      #Controllo presenza file YML per ogni modello SQL
       - name: Check SQL models have corresponding YML files
         run: |
           echo "Verifica presenza dei file yml per ciascun modello sql"
@@ -49,7 +49,7 @@ jobs:
           fi
           echo "success: Tutti i file SQL hanno il rispettivo file YML."
 
-      # 2. Controllo allineamento branch
+      #Controllo allineamento branch
       - name: Check if Branch is Up-to-Date with Target
         run: |
           TARGET_BRANCH="${{ github.base_ref }}"
@@ -108,7 +108,7 @@ jobs:
       #      exit 1
       #    fi
 
-      # 3. Validazione nome ramo sorgente per main
+      #Validazione nome ramo sorgente per main
       - name: Validate Source Branch Name for Main
         if: github.base_ref == 'main'
         run: |
@@ -139,19 +139,19 @@ jobs:
       #      fi
       #    fi
 
-      # 4. Setup Python
+      #Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 5. Installazione dipendenze
+      #Installazione dipendenze
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
           pip install dbt-databricks databricks-sdk requests
 
-      # 6. Impostazione Variabili d'Ambiente e Generation profiles.yml
+      # Impostazione Variabili d'Ambiente e Generation profiles.yml
       - name: Set Target Environment Variables
         run: |
           PR_SCHEMA="tst_pr_${{ github.event.number }}"
@@ -179,7 +179,7 @@ jobs:
                 threads: 4
           EOF
 
-      # 6.5 Creazione Fisica del Catalogo Temporaneo su Databricks
+      #Creazione Fisica del Catalogo Temporaneo su Databricks
       - name: Create PR Temporary Catalog
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
@@ -189,7 +189,7 @@ jobs:
         run: |
           python macros/temp_catalog.py --action create
 
-      # 7. Download Manifest da Databricks Volume
+      #Download Manifest da Databricks Volume
       - name: Download Target Manifest from Databricks Volume
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
@@ -197,12 +197,12 @@ jobs:
         run: |
           python macros/get_last_manifest.py
 
-      # 8. Download Dipendenze dbt
+      #Download Dipendenze dbt
       - name: Install dbt Dependencies
         run: |
           dbt deps --profiles-dir .
 
-      # 9. Step 1 - dbt Full Refresh solo sugli incrementali modificati
+      # dbt Full Refresh solo sugli incrementali modificati e pedri
       - name: Step 1 - dbt Full Refresh (Modified Incremental models)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
@@ -227,7 +227,7 @@ jobs:
               --select config.materialized:incremental --exclude leaning_dummy_model+ || echo "Nessun modello incrementale presente nel progetto."
           fi
 
-      # 10. Step 2 - dbt Build dei modificati + lineage incrementale
+      # dbt Build dei modificati + lineage incrementale
       - name: Step2 - dbt Build (Modified models & Incremental lineage)
         env:
           DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
