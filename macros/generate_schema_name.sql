@@ -3,7 +3,7 @@
     {%- set default_schema = target.schema -%}
     
     {# Se siamo in PROD o TEST, usiamo lo schema del modello (es. bronze, silver, gold) #}
-    {%- if target.name in ['prd', 'tst'] -%}
+    {%- if target.name in ['prd', 'tst', 'prod', 'default'] -%}
         {%- if custom_schema_name is none -%}
             {{ default_schema }}
         {%- else -%}
