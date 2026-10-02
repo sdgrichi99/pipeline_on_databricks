@@ -48,7 +48,7 @@ models:
 
   elementary:
     +schema: elementary
-    +enabled: "{{ (target.name.lower() == 'prd' or env_var('ELEMENTARY', 'false').lower() == 'true') | as_bool }}"
+    +enabled: "{{ (target.name.lower() in ['prd', 'databricks_cluster'] or env_var('ELEMENTARY', 'false').lower() == 'true') | as_bool }}"
     
 data_tests:
   +severity: warn
