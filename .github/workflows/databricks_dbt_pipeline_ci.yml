@@ -233,6 +233,7 @@ jobs:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
       DATABRICKS_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      PR_NUM: ${{ github.event.number }}
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
