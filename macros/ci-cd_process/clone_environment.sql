@@ -20,7 +20,7 @@
         
         {# 2. Recupera le tabelle presenti nello schema #}
         {% set tables_query %}
-          show tables in {{ source_catalog }}."{{ schema_name }}"
+          show tables in {{ source_catalog }}.{{ schema_name }}
         {% endset %}
         {% set table_results = run_query(tables_query) %}
         
@@ -28,8 +28,8 @@
         {% for table_row in table_results %}
           {% set table_name = table_row[1] %}
           {% set clone_sql %}
-            create or replace table {{ target_catalog }}."{{ schema_name }}"."{{ table_name }}" 
-            shallow clone {{ source_catalog }}."{{ schema_name }}"."{{ table_name }}";
+            create or replace table {{ target_catalog }}.{{ schema_name }}.{{ table_name }}
+            shallow clone {{ source_catalog }}.{{ schema_name }}.{{ table_name }};
           {% endset %}
           
           {% do run_query(clone_sql) %}

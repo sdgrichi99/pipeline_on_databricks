@@ -15,15 +15,15 @@
         {% do run_query("create schema if not exists " ~ target_catalog ~ "." ~ schema_name) %}
         
         {% set tables_query %}
-          show tables in {{ source_catalog }}."{{ schema_name }}"
+          show tables in {{ source_catalog }}.{{ schema_name }}
         {% endset %}
         {% set table_results = run_query(tables_query) %}
         
         {% for table_row in table_results %}
           {% set table_name = table_row[1] %}
           {% set promote_sql %}
-            create or replace table {{ target_catalog }}."{{ schema_name }}"."{{ table_name }}" 
-            clone {{ source_catalog }}."{{ schema_name }}"."{{ table_name }}";
+            create or replace table {{ target_catalog }}.{{ schema_name }}.{{ table_name }}
+            clone {{ source_catalog }}.{{ schema_name }}.{{ table_name }};
           {% endset %}
           
           {% do run_query(promote_sql) %}
