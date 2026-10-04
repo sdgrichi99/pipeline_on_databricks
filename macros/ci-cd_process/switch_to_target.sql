@@ -1,4 +1,4 @@
-{% macro clone_environment(source_catalog, target_catalog) %}
+{% macro switch_to_target(source_catalog, target_catalog) %}
   {{ log("Avvio clonazione da " ~ source_catalog ~ " a " ~ target_catalog, info=True) }}
 
   {# 1. Recupera la lista degli schemi da clonare (escludendo quelli di sistema ed elementary) #}
