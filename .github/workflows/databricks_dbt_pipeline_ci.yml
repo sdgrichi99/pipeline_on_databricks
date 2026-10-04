@@ -188,7 +188,7 @@ jobs:
         if: env.IS_RELEASE_PR == 'true'
         run: |
           echo "Clonazione di PROD (workspace_prd) nel catalogo temporaneo ${{ env.TEMP_CATALOG }}"
-          dbt run-operation ci-cd_process/clone_environment \
+          dbt run-operation clone_environment \
             --args '{"source_catalog": "workspace_prd", "target_catalog": "${{ env.TEMP_CATALOG }}"}' \
             --profiles-dir . \
             --target qa
@@ -212,7 +212,7 @@ jobs:
         if: env.IS_RELEASE_PR == 'true'
         run: |
           echo "Clonazione da ${{ env.TEMP_CATALOG }} verso il catalogo condiviso 'qa'..."
-          dbt run-operation ci-cd_process/switch_to_target \
+          dbt run-operation switch_to_target \
             --args '{"source_catalog": "${{ env.TEMP_CATALOG }}", "target_catalog": "qa"}' \
             --profiles-dir . \
             --target qa
