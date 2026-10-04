@@ -3,69 +3,58 @@ name: Databricks dbt CD Pipeline
 on:
   push:
     branches:
-      - main
-      - release
-      - release/*
+      - main # Si attiva solo al Merge su main
 
 jobs:
-  dbt-cd-deploy:
-    name: Run dbt Build & Update Manifest Artifact
+  dbt-cd-deploy-prod:
+    name: Deploy to Production (workspace_prd)
     runs-on: ubuntu-latest
 
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_HTTP_PATH: ${{ secrets.DBT_HTTP_PATH }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
     steps:
-      # Checkout del codice appena unito su main
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      # Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # Installazione Dipendenze
       - name: Install Dependencies
         run: |
-          pip install --upgrade pip
-          pip install dbt-databricks databricks-sdk
+          python -m pip install --upgrade pip
+          pip install dbt-databricks databricks-sdk requests
 
-      # Configurazione Variabili d'Ambiente Prod
-      - name: Set Target Environment Variables
-        run: |
-          echo "DATABRICKS_HOST=${{ secrets.DATABRICKS_HOST }}" >> $GITHUB_ENV
-          echo "DATABRICKS_HTTP_PATH=${{ secrets.DBT_HTTP_PATH }}" >> $GITHUB_ENV
-          echo "DATABRICKS_TOKEN=${{ secrets.DATABRICKS_TOKEN }}" >> $GITHUB_ENV
-          echo "DBT_TARGET=prd" >> $GITHUB_ENV
-
-      # Generazione profiles.yml per Prod
       - name: Generate profiles.yml
         run: |
           cat <<EOF > profiles.yml
           pipeline_on_databricks:
-            target: "${{ env.DBT_TARGET }}"
+            target: "prd"
             outputs:
               prd:
                 type: databricks
-                host: "${{ env.DATABRICKS_HOST }}"
-                http_path: "${{ env.DATABRICKS_HTTP_PATH }}"
+                host: "${DATABRICKS_HOST}"
+                http_path: "${DATABRICKS_HTTP_PATH}"
                 auth_type: token
-                token: "${{ env.DATABRICKS_TOKEN }}"
+                token: "${DATABRICKS_TOKEN}"
                 catalog: workspace_prd
                 schema: main
                 threads: 4
           EOF
 
-      # Installazione pacchetti dbt
       - name: Install dbt Dependencies
-        run: |
-          dbt deps --profiles-dir .
+        run: dbt deps --profiles-dir .
 
-      # Esecuzione 'dbt build' in Produzione
-      - name: Run dbt Build on Production
+      - name: Run dbt Build in Production
         run: |
-          dbt build --profiles-dir .
+          echo "Esecuzione dbt build sul catalogo di Produzione (workspace_prd)..."
+          dbt build --target prd --profiles-dir . --exclude leaning_dummy_model+
 
-      # Upload del nuovo manifest.json su Databricks Volume
       - name: Upload Manifest to Databricks Volume
+        if: success()
         run: |
           python macros/upload_manifest.py

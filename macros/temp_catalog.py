@@ -14,6 +14,12 @@ def main():
         required=True,
         help="Azione da eseguire: create o drop",
     )
+    parser.add_argument(
+        "--catalog",
+        type=str,
+        required=False,
+        help="Nome esplicito del catalogo da creare o eliminare",
+    )
     args = parser.parse_args()
 
     # Lettura delle variabili d'ambiente necessarie
@@ -22,13 +28,22 @@ def main():
     http_path = os.environ.get("DATABRICKS_HTTP_PATH")
     pr_num = os.environ.get("PR_NUM")
 
+    catalog_name = args.catalog
+    if not catalog_name:
+        if pr_num:
+            catalog_name = f"tst_pr_{pr_num}"
+        else:
+            print(
+                "::error::Nome del catalogo mancante. Specifica '--catalog' o imposta la variabile d'ambiente 'PR_NUM'."
+            )
+            sys.exit(1)
+
     if not all([host, token, http_path, pr_num]):
         print(
             "::error::Variabili d'ambiente mancanti. Assicurati che DATABRICKS_HOST, DATABRICKS_TOKEN, DATABRICKS_HTTP_PATH e PR_NUM siano impostate."
         )
         sys.exit(1)
 
-    catalog_name = f"tst_pr_{pr_num}"
     warehouse_id = http_path.split("/")[-1]
 
     # Inizializzazione Client SDK Databricks
