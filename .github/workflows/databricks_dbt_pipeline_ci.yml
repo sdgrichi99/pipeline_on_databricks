@@ -134,6 +134,9 @@ jobs:
           TARGET_BRANCH="${{ github.base_ref }}"
           PR_NUM="${{ github.event.number }}"
 
+          # Aggiungiamo PR_NUM alle variabili d'ambiente del workflow
+          echo "PR_NUM=${PR_NUM}" >> $GITHUB_ENV
+
           if [[ "$TARGET_BRANCH" == "main" ]]; then
             echo "PR verso main: attivazione QA temporaneo (clone di PROD)"
             echo "TEMP_CATALOG=qa_pr_${PR_NUM}" >> $GITHUB_ENV
