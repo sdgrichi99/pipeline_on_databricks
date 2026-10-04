@@ -17,12 +17,12 @@
         
         {# Crea lo schema nel catalogo temporaneo target se non esiste #}
         {% do run_query("create schema if not exists " ~ target_catalog ~ "." ~ schema_name) %}
-        
+
         {% set tables_query %}
           select table_name 
           from {{ source_catalog }}.information_schema.tables 
           where table_schema = '{{ schema_name }}'
-            and table_type in ('MANAGED', 'EXTERNAL')
+            and table_type in ('VIEW')
         {% endset %}
         
         {% set table_results = run_query(tables_query) %}
@@ -31,10 +31,12 @@
         {% for table_row in table_results %}
           {% set table_name = table_row[0] %}
           
+          {% if schema_name != 'elementary' or table_name == 'elementary_test_results' %}
           {% set clone_sql %}
             create or replace table {{ target_catalog }}.{{ schema_name }}.{{ table_name }}
             clone {{ source_catalog }}.{{ schema_name }}.{{ table_name }};
           {% endset %}
+          {%endif %}
           
           {{ log("Clonazione tabella: " ~ schema_name ~ "." ~ table_name, info=True) }}
           {% do run_query(clone_sql) %}

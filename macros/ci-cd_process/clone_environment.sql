@@ -31,10 +31,12 @@
         {% for table_row in table_results %}
           {% set table_name = table_row[0] %}
           
+          {% if schema_name != 'elementary' or table_name == 'elementary_test_results' %}
           {% set clone_sql %}
             create or replace table {{ target_catalog }}.{{ schema_name }}.{{ table_name }}
             shallow clone {{ source_catalog }}.{{ schema_name }}.{{ table_name }};
           {% endset %}
+          {% endif %}
           
           {{ log("Clonazione tabella: " ~ schema_name ~ "." ~ table_name, info=True) }}
           {% do run_query(clone_sql) %}
