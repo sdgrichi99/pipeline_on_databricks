@@ -178,20 +178,20 @@ jobs:
       - name: Create Temporary Catalog (TST o QA)
         run: |
           python macros/temp_catalog.py --action create --catalog ${{ env.TEMP_CATALOG }}
-
-      - name: Clone prod into temp QA (Solo per PR verso main)
-        if: env.IS_RELEASE_PR == 'true'
-        run: |
-          echo "Clonazione di PROD (workspace_prd) nel catalogo temporaneo ${{ env.TEMP_CATALOG }}..."
-          dbt run-operation ci-cd_process/clone_environment \
-            --args '{"source_catalog": "workspace_prd", "target_catalog": "${{ env.TEMP_CATALOG }}"}' \
-            --profiles-dir . \
-            --target qa
-
+      
       - name: Download Target Manifest & Install Deps
         run: |
           python macros/get_last_manifest.py
           dbt deps --profiles-dir .
+
+      - name: Clone prod into temp QA (Solo per PR verso main)
+        if: env.IS_RELEASE_PR == 'true'
+        run: |
+          echo "Clonazione di PROD (workspace_prd) nel catalogo temporaneo ${{ env.TEMP_CATALOG }}"
+          dbt run-operation ci-cd_process/clone_environment \
+            --args '{"source_catalog": "workspace_prd", "target_catalog": "${{ env.TEMP_CATALOG }}"}' \
+            --profiles-dir . \
+            --target qa
 
       - name: Run dbt Build
         run: |
@@ -221,7 +221,7 @@ jobs:
       - name: Drop Temporary QA Catalog
         if: always() && env.IS_RELEASE_PR == 'true'
         run: |
-          echo "Cancellazione catalogo temporaneo ${{ env.TEMP_CATALOG }} a fine step..."
+          echo "Cancellazione catalogo temporaneo ${{ env.TEMP_CATALOG }} a fine step"
           python macros/temp_catalog.py --action drop --catalog ${{ env.TEMP_CATALOG }} || true
 
   # Job di pulizia che rimane attivo per il cleanup di tst_pr_<NUM> alla chiusura/merge
