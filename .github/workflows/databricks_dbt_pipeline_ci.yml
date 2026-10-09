@@ -193,18 +193,63 @@ jobs:
             --profiles-dir . \
             --target qa
 
-      - name: Run dbt Build
+      - name: Run dbt Build (Two-Phase Execution)
         run: |
           if [ -f "./target_remote/manifest.json" ]; then
+
+            if [ "${{ env.DBT_TARGET }}" == "tst" ]; then
+
+              # 1. Clone delle tabelle incrementali in TST
+              dbt clone \
+                --target ${{ env.DBT_TARGET }} \
+                --state ./target_remote \
+                --profiles-dir . \
+                --selector models_to_clone_to_tst \
+                --exclude leaning_dummy_model+
+
+              # 2. Full-refresh dei modelli incrementali modificati in TST
+              dbt build \
+                --target ${{ env.DBT_TARGET }} \
+                --fail-fast \
+                --defer \
+                --full-refresh \
+                --state ./target_remote \
+                --profiles-dir . \
+                --selector modified_incrementals \
+                --exclude leaning_dummy_model+
+
+            elif [ "${{ env.DBT_TARGET }}" == "qa" ]; then
+
+              # 1. Build dei modelli incrementali modificati in QA
+              dbt build \
+                --target ${{ env.DBT_TARGET }} \
+                --fail-fast \
+                --defer \
+                --state ./target_remote \
+                --profiles-dir . \
+                --selector modified_incrementals \
+                --exclude leaning_dummy_model+
+
+            fi
+
+            # Seconda fase comune per TST e QA: Build di state:modified+
+            echo "second phase"
             dbt build \
               --target ${{ env.DBT_TARGET }} \
               --fail-fast \
               --defer \
               --state ./target_remote \
               --profiles-dir . \
-              --select state:modified+ --exclude leaning_dummy_model+
+              --select state:modified+ \
+              --exclude leaning_dummy_model+
+
           else
-            dbt build --target ${{ env.DBT_TARGET }} --fail-fast --profiles-dir . --exclude leaning_dummy_model+
+            echo "Manifest remoto non trovato: esecuzione build completa"
+            dbt build \
+              --target ${{ env.DBT_TARGET }} \
+              --fail-fast \
+              --profiles-dir . \
+              --exclude leaning_dummy_model+
           fi
 
       # Copia del catalogo temporaneo qa_pr_<NUM> nel catalogo qa permanente condiviso

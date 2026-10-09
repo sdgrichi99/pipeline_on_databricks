@@ -1,0 +1,30 @@
+selectors:
+  - name: models_to_clone_to_tst
+    description: Incremental models that are downstream from modified models, (for temp tst env)
+    definition:
+      intersection:
+        - method: state
+          value: modified
+          children: true
+        - method: config.materialized
+          value: incremental
+        - method: state
+          value: old
+        - method: package #(e.g. no elementary or other package models)
+          value: this
+
+  - name: modified_incrementals
+    description: incremental models that have been modified including their modified parents, and modified seeds
+    definition:
+      union:
+        - intersection:
+            - method: state
+              value: modified
+              children: true
+              indirect_selection: cautious
+            - method: config.materialized
+              value: incremental
+              parents: true
+              indirect_selection: cautious
+            - method: package # ensure only rnd_integrated_data_dw models are selected
+              value: this
