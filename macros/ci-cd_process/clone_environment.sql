@@ -13,7 +13,7 @@
       {% set schema_name = schema_row[0] %}
       
       {# Esclude schemi di sistema ed elementary #}
-      {% if schema_name not in ['information_schema', 'default', 'elementary'] %}
+      {% if schema_name not in ['information_schema', 'default'] %}
         
         {# Crea lo schema nel catalogo temporaneo target se non esiste #}
         {% do run_query("create schema if not exists " ~ target_catalog ~ "." ~ schema_name) %}

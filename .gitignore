@@ -8,3 +8,4 @@ logs/
 generate_yml.py
 profiles.yml
 target_remote
+bulk_loading_snowflake.sql
