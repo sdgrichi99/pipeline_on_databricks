@@ -38,7 +38,6 @@
           {% do run_query(clone_sql) %}
         {% endfor %}
         
-      {% endif %}
     {% endfor %}
     {{ log("Clonazione completata con successo", info=True) }}
   {% endif %}
